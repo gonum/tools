@@ -9,6 +9,10 @@ Installation is done using `go get`.
 go get -u gonum.org/v1/tools/...
 ```
 
+## Supported Go versions
+
+Gonum supports and tests on the [three most recent major versions of Go](https://github.com/gonum/tools/blob/master/.travis.yml#L6-L11).
+
 ## Issues
 
 If you find any bugs, feel free to file an issue on the github issue tracker. Discussions on API changes, added features, code review, or similar requests are preferred on the gonum-dev Google Group.
