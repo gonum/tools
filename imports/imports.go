@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package imports provides an API to check whether code imports blacklisted packages.
+// Package imports provides an API to check whether code imports packages
+// according to a whitelist/blacklist scheme.
 package imports // import "gonum.org/v1/tools/imports"
 
 import (
 	"fmt"
+	"go/build"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -16,15 +18,27 @@ import (
 	"strings"
 )
 
-// CheckBlacklisted analyzes all Go files under dir for deprecated and
-// blacklisted imports.
-// If CheckBlacklisted encounters multiple files importing deprecated imports, the
+// CheckAllowed analyzes all Go files under dir for imports based on a
+// whitelist/blacklist scheme.
+// If CheckAllowed encounters multiple files importing non-allowed imports, the
 // first error is returned to the user.
-func CheckBlacklisted(dir string, blacklist []string) error {
+func CheckAllowed(dir string, whitelist, blacklist []string) error {
 	// TODO: handle multiple errors.
 	// TODO: add a limit of the number of errors to handle before bailing out.
 
-	list, err := str2RE(blacklist)
+	if len(whitelist) == 0 && len(blacklist) == 0 {
+		return nil
+	}
+
+	whitelist, err := includeStd(whitelist)
+	if err != nil {
+		return err
+	}
+	whitepat, err := str2RE(whitelist)
+	if err != nil {
+		return err
+	}
+	blackpat, err := str2RE(blacklist)
 	if err != nil {
 		return err
 	}
@@ -51,7 +65,7 @@ func CheckBlacklisted(dir string, blacklist []string) error {
 
 	fset := token.NewFileSet()
 	for _, fname := range files {
-		e := process(fname, fset, list)
+		e := process(fname, fset, whitepat, blackpat)
 		if e != nil {
 			if err == nil {
 				err = e
@@ -61,15 +75,15 @@ func CheckBlacklisted(dir string, blacklist []string) error {
 	return err
 }
 
-func process(fname string, fset *token.FileSet, blacklist []*regexp.Regexp) error {
+func process(fname string, fset *token.FileSet, whitelist, blacklist []*regexp.Regexp) error {
 	src, err := ioutil.ReadFile(fname)
 	if err != nil {
 		return err
 	}
-	return checkImports(fset, src, fname, blacklist)
+	return checkImports(fset, src, fname, whitelist, blacklist)
 }
 
-func checkImports(fset *token.FileSet, src []byte, fname string, blacklist []*regexp.Regexp) error {
+func checkImports(fset *token.FileSet, src []byte, fname string, whitelist, blacklist []*regexp.Regexp) error {
 	f, err := parser.ParseFile(fset, fname, src, parser.ImportsOnly)
 	if err != nil {
 		return err
@@ -78,7 +92,10 @@ func checkImports(fset *token.FileSet, src []byte, fname string, blacklist []*re
 	imp := Error{File: fname}
 	for _, s := range f.Imports {
 		path := strings.Trim(s.Path.Value, `"`)
-		if blacklisted(path, blacklist) {
+		if len(whitelist) != 0 && !listed(path, whitelist) {
+			imp.Imports = append(imp.Imports, path)
+		}
+		if listed(path, blacklist) {
 			imp.Imports = append(imp.Imports, path)
 		}
 	}
@@ -88,8 +105,8 @@ func checkImports(fset *token.FileSet, src []byte, fname string, blacklist []*re
 	return nil
 }
 
-func blacklisted(path string, blacklist []*regexp.Regexp) bool {
-	for _, v := range blacklist {
+func listed(path string, list []*regexp.Regexp) bool {
+	for _, v := range list {
 		if v.MatchString(path) {
 			return true
 		}
@@ -98,6 +115,9 @@ func blacklisted(path string, blacklist []*regexp.Regexp) bool {
 }
 
 func str2RE(vs []string) ([]*regexp.Regexp, error) {
+	if len(vs) == 0 {
+		return nil, nil
+	}
 	var (
 		err error
 		o   = make([]*regexp.Regexp, len(vs))
@@ -117,7 +137,50 @@ func str2RE(vs []string) ([]*regexp.Regexp, error) {
 	return o, nil
 }
 
-// Error stores information about a deprecated import in a Go file.
+func includeStd(list []string) ([]string, error) {
+	if len(list) == 0 {
+		return list, nil
+	}
+	pkgs, err := std()
+	if err != nil {
+		return nil, err
+	}
+	return append(list, pkgs...), nil
+}
+
+// str returns a slice of patterns matching the standard library.
+func std() ([]string, error) {
+	var pkgs []string
+
+	// Exclude GOPATH.
+	ctx := build.Default
+	ctx.GOPATH = ""
+	for _, root := range ctx.SrcDirs() {
+		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if info.IsDir() {
+				switch info.Name() {
+				case "builtin", "cmd", "vendor", "internal", "testdata":
+					return filepath.SkipDir
+				}
+				path, err := filepath.Rel(root, path)
+				if err != nil {
+					return err
+				}
+				if path != "." {
+					pkgs = append(pkgs, filepath.ToSlash(path))
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return pkgs, nil
+}
+
+// Error stores information about a disallowed import in a Go file.
 type Error struct {
 	File    string
 	Imports []string
@@ -125,7 +188,7 @@ type Error struct {
 
 func (e Error) Error() string {
 	return fmt.Sprintf(
-		"%s: deprecated imports: %v",
+		"%s: disallowed imports: %v",
 		e.File,
 		strings.Join(e.Imports, ", "),
 	)
