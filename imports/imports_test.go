@@ -34,6 +34,10 @@ func TestCheck(t *testing.T) {
 			},
 		},
 		{
+			pkg: "math/rands",
+			err: nil,
+		},
+		{
 			pkg: "math",
 			err: nil,
 		},

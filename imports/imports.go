@@ -103,6 +103,12 @@ func str2RE(vs []string) ([]*regexp.Regexp, error) {
 		o   = make([]*regexp.Regexp, len(vs))
 	)
 	for i, v := range vs {
+		if !strings.HasPrefix(v, "^") {
+			v = "^" + v
+		}
+		if !strings.HasSuffix(v, "$") {
+			v += "$"
+		}
 		o[i], err = regexp.Compile(v)
 		if err != nil {
 			return nil, err
