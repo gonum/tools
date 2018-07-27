@@ -148,7 +148,7 @@ func includeStd(list []string) ([]string, error) {
 	return append(list, pkgs...), nil
 }
 
-// str returns a slice of patterns matching the standard library.
+// std returns a slice of patterns matching the standard library.
 func std() ([]string, error) {
 	var pkgs []string
 

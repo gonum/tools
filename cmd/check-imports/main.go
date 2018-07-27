@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Command check-imports inspects a source tree for imports satisfying a
-// whitelist/blacklist scheme. If a whitelist in included, packages from
+// whitelist/blacklist scheme. If a whitelist is included, packages from
 // the standard library are included. The order of application is whitelist
 // then blacklist.
 //
