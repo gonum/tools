@@ -7,12 +7,14 @@
 package imports // import "gonum.org/v1/tools/imports"
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
-	"go/build"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -150,31 +152,28 @@ func includeStd(list []string) ([]string, error) {
 
 // std returns a slice of patterns matching the standard library.
 func std() ([]string, error) {
-	var pkgs []string
+	gocmd, err := exec.LookPath("go")
+	if err != nil {
+		return nil, err
+	}
 
-	// Exclude GOPATH.
-	ctx := build.Default
-	ctx.GOPATH = ""
-	for _, root := range ctx.SrcDirs() {
-		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if info.IsDir() {
-				switch info.Name() {
-				case "builtin", "cmd", "vendor", "internal", "testdata":
-					return filepath.SkipDir
-				}
-				path, err := filepath.Rel(root, path)
-				if err != nil {
-					return err
-				}
-				if path != "." {
-					pkgs = append(pkgs, filepath.ToSlash(path))
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, err
+	cmd := exec.Command(gocmd, "list", "std")
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	var pkgs []string
+	sc := bufio.NewScanner(&buf)
+	for sc.Scan() {
+		pkg := sc.Text()
+		switch strings.Split(pkg, "/")[0] {
+		case "builtin", "cmd", "vendor", "internal", "testdata":
+			continue
 		}
+		pkgs = append(pkgs, pkg)
 	}
 
 	return pkgs, nil

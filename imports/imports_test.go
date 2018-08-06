@@ -25,10 +25,7 @@ var checkTests = []struct {
 }{
 	{
 		pkg: "math/rand",
-		err: Error{
-			File:    "file.go",
-			Imports: []string{"math/rand"},
-		},
+		err: nil,
 	},
 	{
 		pkg: "math/rands",
@@ -45,6 +42,11 @@ var checkTests = []struct {
 			File:    "file.go",
 			Imports: []string{"math/rand"},
 		},
+	},
+	{
+		blacklist: blacklist,
+		pkg:       "math/rands",
+		err:       nil,
 	},
 	{
 		blacklist: blacklist,
