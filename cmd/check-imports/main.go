@@ -7,6 +7,9 @@
 // the standard library are included. The order of application is whitelist
 // then blacklist.
 //
+// If the standard library is not wanted in the whitelist, the pseudo-package
+// "-std" can be specified in the whitelist to exclude it.
+//
 // Example:
 //
 //  $> check-imports -b="github.com/gonum/.*,math/rand"

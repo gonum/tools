@@ -143,6 +143,21 @@ func includeStd(list []string) ([]string, error) {
 	if len(list) == 0 {
 		return list, nil
 	}
+
+	wanted := true
+	for i := 0; i < len(list); {
+		if list[i] != "-std" {
+			i++
+			continue
+		}
+		wanted = false
+		list[i] = list[len(list)-1]
+		list = list[:len(list)-1]
+	}
+	if !wanted {
+		return list, nil
+	}
+
 	pkgs, err := std()
 	if err != nil {
 		return nil, err

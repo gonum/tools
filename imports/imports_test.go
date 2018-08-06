@@ -126,14 +126,10 @@ var checkTests = []struct {
 
 func TestCheck(t *testing.T) {
 	fset := token.NewFileSet()
-	var err error
 	for _, tc := range checkTests {
-		whitelist := tc.whitelist
-		if len(whitelist) != 0 && whitelist[0] != "-std" {
-			whitelist, err = includeStd(whitelist)
-			if err != nil {
-				t.Fatal(err)
-			}
+		whitelist, err := includeStd(tc.whitelist)
+		if err != nil {
+			t.Fatal(err)
 		}
 		var whitepat, blackpat []*regexp.Regexp
 		if len(tc.whitelist) != 0 {
