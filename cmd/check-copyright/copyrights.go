@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 func main() {
@@ -80,11 +81,34 @@ func hasCopyrightHeader(fname string, fset *token.FileSet, copyright *regexp.Reg
 	}
 
 	for _, cg := range f.Comments {
-		var text bytes.Buffer
+		var comment bytes.Buffer
+		var inComment bool
 		for _, c := range cg.List {
-			fmt.Fprintln(&text, c.Text)
+			text := c.Text
+			if !inComment {
+				switch {
+				case strings.HasPrefix(text, "/*"):
+					inComment = true
+					fallthrough
+				case strings.HasPrefix(text, "//"):
+					text = text[2:]
+					if strings.HasPrefix(text, " ") {
+						text = text[1:]
+					}
+				}
+			}
+			if inComment {
+				if strings.HasSuffix(text, "*/") {
+					inComment = false
+					text = text[:len(text)-2]
+					if strings.HasSuffix(text, " ") {
+						text = text[:len(text)-1]
+					}
+				}
+			}
+			fmt.Fprintln(&comment, text)
 		}
-		if copyright.Match(text.Bytes()) {
+		if copyright.Match(comment.Bytes()) {
 			return true, nil
 		}
 	}
