@@ -38,6 +38,9 @@ func main() {
 	}
 	for _, dir := range dirs {
 		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
 			switch {
 			case info.IsDir():
 				switch info.Name() {
