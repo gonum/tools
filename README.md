@@ -11,7 +11,7 @@ go get -u gonum.org/v1/tools/...
 
 ## Supported Go versions
 
-Gonum supports and tests on the [three most recent major versions of Go](https://github.com/gonum/tools/blob/master/.travis.yml#L6-L11).
+Gonum supports and tests on the [three most recent minor versions of Go](https://github.com/gonum/tools/blob/master/.travis.yml#L6-L11).
 
 ## Issues
 
